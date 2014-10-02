@@ -26,8 +26,12 @@
 
 			body
 			{
-				background-color: #ccf;
+				background-color: LightBlue;
 				cursor: crosshair;
+				/*background: -webkit-linear-gradient(DarkBlue, LightBlue); /* For Safari 5.1 to 6.0 */*/
+				/*background: -o-linear-gradient(DarkBlue, LightBlue);  For Opera 11.1 to 12.0 */
+				/*background: -moz-linear-gradient(DarkBlue, LightBlue); /* For Firefox 3.6 to 15 */*/
+				/*background: linear-gradient(DarkBlue, LightBlue); /* Standard syntax */*/
 			}
 
 			.progress
@@ -56,9 +60,9 @@
 			var currentBarId = null;
 			var friction = 0.875;
 			var gravity = 0.5;
-			var groundLevel = 1000.0;
+			var groundLevel = 800.0;
 			var barThickness = 20;
-			var barLength = 100.0;
+			// var barLength = 50.0;
 
 
 
@@ -79,13 +83,26 @@
 			function placeProgressBars()
 			{
 
-				var runningHeight = 500.0;
+				var runningHeight = 700.0;
+				var maxHeight = 300.0;
 
 				for( var i = 0; i < 128; i++ )
 				{
 
-					var left = (i * barThickness) - (barLength * 0.5) - (barThickness * 0.5);
-					var top = runningHeight + (Math.random() * 50) - 25;
+					var top = runningHeight + Math.floor((Math.random() * 30)) - 15;
+
+					// Clamping
+					if( top > groundLevel - 10 )
+						top = groundLevel - 10;
+					if( top < maxHeight )
+						top = maxHeight;
+
+					// Incremeents of 5
+					top = Math.ceil(top/5) * 5.0;
+
+					var distanceToGround = groundLevel - top;
+					var thisBarLength = distanceToGround * 2.0;
+					var left = (i * barThickness) - (thisBarLength * 0.5) - (barThickness * 0.5);
 					runningHeight = top;
 
 					// console.log( mousex + ', ' + left);
@@ -93,7 +110,7 @@
 					var rootDiv = $('<div/>', {
 					    id: 'foo_' + i,
 					    class: 'progress',
-					    style: 'position:absolute;width:' + barLength + 'px;top:' + top + 'px;left:' + left + 'px',
+					    style: 'position:absolute;width:' + thisBarLength + 'px;top:' + top + 'px;left:' + left + 'px',
 					}).appendTo( $("body") );
 
 					var barDiv = $('<div/>', {
@@ -145,6 +162,7 @@
 				if( currentBarId != null )
 				{
 					var currentBar = $("#" + currentBarId);
+					var barLength = parseFloat(currentBar.css('width'));
 					var distanceX = playerPosition.x - parseFloat(currentBar.css('left')) - (barLength * 0.5) + 10.0;
 
 					if( Math.abs(distanceX) <= (barThickness * 0.5) )
@@ -220,6 +238,7 @@
 				$('.progress').each( function() {
 
 					// Is player in the same x space?
+					var barLength = parseFloat($(this).css('width'));
 					var distanceX = playerPosition.x - parseFloat($(this).css('left')) - (barLength * 0.5) + 10.0;
 
 					if( Math.abs(distanceX) <= (barThickness * 0.5) )
