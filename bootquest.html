@@ -1,0 +1,251 @@
+
+
+<html>
+
+	<head>
+
+		<title>
+			bootquest
+		</title>
+
+		<script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
+
+		<!-- Latest compiled and minified CSS -->
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+
+		<!-- Optional theme -->
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
+
+		<!-- Latest compiled and minified JavaScript -->
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+
+		<!-- font awesome -->
+		<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+
+		<style>
+
+			body
+			{
+				background-color: #ccf;
+				cursor: crosshair;
+			}
+
+			.progress
+			{
+				-ms-transform: rotate(270deg);
+			    -webkit-transform: rotate(270deg);
+			    transform: rotate(270deg);
+			}
+
+			#player{
+				color:black;
+				position:absolute;
+				top:0;
+				left:0;
+			}
+
+		</style>
+
+		<script type="text/javascript">
+
+			var playerVelocity = new Point(0.0, 0.0);
+			var playerPosition = new Point(0.0, 0.0);
+			var playerHeight = 35.0;
+			var playerDistanceFromGround = 0.0;
+			var friction = 0.9;
+			var gravity = 0.5;
+			var groundLevel = 300.0;
+			var barThickness = 20;
+			var barLength = 100.0;
+
+
+			$(document).ready( function(){
+
+				update();
+
+			});
+
+
+			function placeProgressBar(event)
+			{
+
+				var mousex = event.pageX;
+				var mousey = event.pageY;
+				
+				var left = (Math.ceil( mousex / barThickness ) * barThickness) - (barLength * 0.5) - (barThickness * 0.5);
+				var top = mousey;
+
+				// console.log( mousex + ', ' + left);
+
+				var rootDiv = $('<div/>', {
+				    id: 'foo',
+				    class: 'progress',
+				    style: 'position:absolute;width:' + barLength + 'px;top:' + top + 'px;left:' + left + 'px',
+				}).appendTo( $("body") );
+
+				var barDiv = $('<div/>', {
+				    id: 'bar',
+				    class: 'progress-bar progress-bar-striped',
+				    role: 'progressbar',
+				    // aria-valuemin: '0',
+				    // aria-valuemax: '100',
+				    style: 'width:100%',
+				}).appendTo(rootDiv);
+
+			};
+
+
+			function update()
+			{
+
+				setTimeout( 'update()', 16 );
+
+				// player velocity
+				var player = $('#player');
+
+				// Apply friction
+				playerVelocity.x *= friction;
+				playerVelocity.y += gravity;
+
+				playerPosition.x += playerVelocity.x;
+				playerPosition.y += playerVelocity.y;
+
+
+				// Collision
+				playerDistanceFromGround = null;
+				$('.progress').each( function(){
+
+					// Is player in the same x space?
+					// var distanceX = playerPosition.x - parseFloat($(this).css('left')) - (parseFloat($(this).css('width')) * 0.5) + 10.0;
+					var distanceX = playerPosition.x - parseFloat($(this).css('left')) - (barLength * 0.5) + 10.0;
+
+					if( Math.abs(distanceX) <= 10.0 )
+					{
+						$(this).find('div').addClass('progress-bar-success');
+
+						var barTop = parseFloat($(this).css('top')) - (barLength * 0.5) - (playerHeight * 0.5);
+
+						var previousDistanceFromGround = playerDistanceFromGround;
+						playerDistanceFromGround = playerPosition.y - barTop;
+
+						// Prevent player from landing on/climbing up to new ground if distance is too high
+						if( previousDistanceFromGround == null && playerPosition.y > barTop + (playerHeight * 0.5) ) // from gap to higher ledge
+						{
+							playerVelocity.x *= -1.0;
+							playerPosition.x += playerVelocity.x;
+							return;
+						}
+
+						if( playerPosition.y > barTop )
+						{
+							playerPosition.y = barTop;
+							playerVelocity.y *= -0.5;
+						}
+					}
+
+					// console.log(playerDistanceFromGround);
+
+				});
+
+
+				// Clamp at bottom of screen
+				if( playerPosition.y >= groundLevel )
+				{
+					playerPosition.y = groundLevel;
+					playerVelocity.y *= -0.5;
+				}
+
+
+				// Update position
+				player.css('left', playerPosition.x);
+				player.css('top', playerPosition.y);
+
+
+				// Input
+
+				// Space
+				if(keyStates["32"] == true)
+					playerJump();
+
+				// Left
+				if(keyStates["37"] == true)
+					playerMoveHorizontal(-1.0);
+
+				// Right
+				if(keyStates["39"] == true)
+					playerMoveHorizontal(1.0);
+
+
+			};
+
+
+			function Point(_x, _y)
+			{
+				this.x = _x;
+				this.y = _y;
+			};
+
+
+
+			function Point3( _x, _y, _z)
+			{
+				this.x = _x;
+				this.y = _y;
+				this.z = _z;
+			};
+
+
+			function playerJump()
+			{
+				// Only jump from the ground
+				if( playerDistanceFromGround == null )
+					return;
+
+				// Don't allow jump if already moving upward
+				if( playerVelocity.y < -5.0 )
+					return;
+
+				if( Math.abs(playerDistanceFromGround) <= 10.0 )
+					playerVelocity.y = -10.0;
+			};
+
+
+			function playerMoveHorizontal( direction )
+			{
+				playerVelocity.x += direction * 0.5;
+			};
+
+
+
+			var keyStates = {};
+			function keyDown(e)
+			{
+				// console.log(e.keyCode);
+				keyStates[e.keyCode] = true;
+			};
+
+			function keyUp(e)
+			{
+				// console.log(e.keyCode);
+				keyStates[e.keyCode] = false;
+			}
+
+		</script>
+
+	</head>
+
+	<body onclick='placeProgressBar(event)' onkeydown='keyDown(event)' onkeyup='keyUp(event)'>
+
+		<i id='player' class='fa fa-female fa-2x'></i>
+
+			<!-- 
+			<div class="progress" style="position:absolute;width:400px;top:300px;left:120px">
+				<div class="progress-bar progress-bar-striped active"  role="progressbar" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100" style="width:100%">
+				</div>
+			</div>
+			-->
+
+	</body>
+
+</html>
+
