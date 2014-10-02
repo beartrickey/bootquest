@@ -48,49 +48,64 @@
 
 		<script type="text/javascript">
 
+			var player = null;
 			var playerVelocity = new Point(0.0, 0.0);
 			var playerPosition = new Point(0.0, 0.0);
 			var playerHeight = 35.0;
 			var playerDistanceFromGround = 0.0;
-			var friction = 0.9;
+			var currentBarId = null;
+			var friction = 0.875;
 			var gravity = 0.5;
-			var groundLevel = 300.0;
+			var groundLevel = 1000.0;
 			var barThickness = 20;
 			var barLength = 100.0;
 
 
+
 			$(document).ready( function(){
+
+				// Progress bars
+				placeProgressBars();
+
+
+				// player
+				player = $('#player');
 
 				update();
 
 			});
 
 
-			function placeProgressBar(event)
+			function placeProgressBars()
 			{
 
-				var mousex = event.pageX;
-				var mousey = event.pageY;
-				
-				var left = (Math.ceil( mousex / barThickness ) * barThickness) - (barLength * 0.5) - (barThickness * 0.5);
-				var top = mousey;
+				var runningHeight = 500.0;
 
-				// console.log( mousex + ', ' + left);
+				for( var i = 0; i < 128; i++ )
+				{
 
-				var rootDiv = $('<div/>', {
-				    id: 'foo',
-				    class: 'progress',
-				    style: 'position:absolute;width:' + barLength + 'px;top:' + top + 'px;left:' + left + 'px',
-				}).appendTo( $("body") );
+					var left = (i * barThickness) - (barLength * 0.5) - (barThickness * 0.5);
+					var top = runningHeight + (Math.random() * 50) - 25;
+					runningHeight = top;
 
-				var barDiv = $('<div/>', {
-				    id: 'bar',
-				    class: 'progress-bar progress-bar-striped',
-				    role: 'progressbar',
-				    // aria-valuemin: '0',
-				    // aria-valuemax: '100',
-				    style: 'width:100%',
-				}).appendTo(rootDiv);
+					// console.log( mousex + ', ' + left);
+
+					var rootDiv = $('<div/>', {
+					    id: 'foo_' + i,
+					    class: 'progress',
+					    style: 'position:absolute;width:' + barLength + 'px;top:' + top + 'px;left:' + left + 'px',
+					}).appendTo( $("body") );
+
+					var barDiv = $('<div/>', {
+					    id: 'bar',
+					    class: 'progress-bar progress-bar-striped progress-bar-success',
+					    role: 'progressbar',
+					    // aria-valuemin: '0',
+					    // aria-valuemax: '100',
+					    style: 'width:100%',
+					}).appendTo(rootDiv);
+
+				}
 
 			};
 
@@ -99,11 +114,26 @@
 			{
 
 				setTimeout( 'update()', 16 );
+				
 
-				// player velocity
-				var player = $('#player');
+				// Input
+				// Space
+				if(keyStates["32"] == true)
+					playerJump();
 
+				// Left 37 / A 65
+				if(keyStates["37"] == true || keyStates["65"] == true)
+					playerMoveHorizontal(-1.0);
+
+				// Right 39 / D 68
+				if(keyStates["39"] == true || keyStates["68"] == true)
+					playerMoveHorizontal(1.0);
+
+
+				// Update player physics
 				// Apply friction
+				playerPositionLastFrame = new Point( playerPosition.x, playerPosition.y );
+
 				playerVelocity.x *= friction;
 				playerVelocity.y += gravity;
 
@@ -111,41 +141,48 @@
 				playerPosition.y += playerVelocity.y;
 
 
-				// Collision
-				playerDistanceFromGround = null;
-				$('.progress').each( function(){
+				// Is the player still on current bar?
+				if( currentBarId != null )
+				{
+					var currentBar = $("#" + currentBarId);
+					var distanceX = playerPosition.x - parseFloat(currentBar.css('left')) - (barLength * 0.5) + 10.0;
 
-					// Is player in the same x space?
-					// var distanceX = playerPosition.x - parseFloat($(this).css('left')) - (parseFloat($(this).css('width')) * 0.5) + 10.0;
-					var distanceX = playerPosition.x - parseFloat($(this).css('left')) - (barLength * 0.5) + 10.0;
-
-					if( Math.abs(distanceX) <= 10.0 )
+					if( Math.abs(distanceX) <= (barThickness * 0.5) )
 					{
-						$(this).find('div').addClass('progress-bar-success');
-
-						var barTop = parseFloat($(this).css('top')) - (barLength * 0.5) - (playerHeight * 0.5);
-
-						var previousDistanceFromGround = playerDistanceFromGround;
-						playerDistanceFromGround = playerPosition.y - barTop;
-
-						// Prevent player from landing on/climbing up to new ground if distance is too high
-						if( previousDistanceFromGround == null && playerPosition.y > barTop + (playerHeight * 0.5) ) // from gap to higher ledge
-						{
-							playerVelocity.x *= -1.0;
-							playerPosition.x += playerVelocity.x;
-							return;
-						}
-
-						if( playerPosition.y > barTop )
-						{
-							playerPosition.y = barTop;
-							playerVelocity.y *= -0.5;
-						}
+						// Player is still over current bar. Do nothing
+					}
+					else
+					{
+						currentBarId = null;
 					}
 
-					// console.log(playerDistanceFromGround);
+				}
 
-				});
+
+				// Check for new bar if null
+				if( currentBarId == null )
+				{
+					checkForBarCollision();
+				}
+				
+
+				// If the player is over a bar, check if player fell through ground
+				if( currentBarId != null )
+				{
+					var currentBar = $("#" + currentBarId);
+					var barTop = parseFloat(currentBar.css('top')) - (barLength * 0.5) - (playerHeight * 0.5);
+					playerDistanceFromGround = playerPosition.y - barTop;
+
+					if( playerPosition.y > barTop )// Snap player to top of bar
+					{
+						playerPosition.y = barTop;
+						playerVelocity.y *= -0.5;
+					}
+				}
+				else
+				{
+					// console.log('player has no bar. falling');
+				}
 
 
 				// Clamp at bottom of screen
@@ -155,27 +192,71 @@
 					playerVelocity.y *= -0.5;
 				}
 
+				// Clamp at left limit of screen
+				if( playerPosition.x < 0.0 )
+				{
+					playerPosition.x = 0.0;
+				}
+
 
 				// Update position
 				player.css('left', playerPosition.x);
 				player.css('top', playerPosition.y);
 
 
-				// Input
+				// Scroll window?
+				// var scrollX = window.screenX;
+				// var scrollY = window.screenY;
 
-				// Space
-				if(keyStates["32"] == true)
-					playerJump();
+				window.scrollTo( playerPosition.x - ($(window).width() * 0.5), playerPosition.y );
 
-				// Left
-				if(keyStates["37"] == true)
-					playerMoveHorizontal(-1.0);
-
-				// Right
-				if(keyStates["39"] == true)
-					playerMoveHorizontal(1.0);
+			};
 
 
+			function checkForBarCollision()
+			{
+
+				// Player could be over a gap, or a new bar. Check.
+				$('.progress').each( function() {
+
+					// Is player in the same x space?
+					var distanceX = playerPosition.x - parseFloat($(this).css('left')) - (barLength * 0.5) + 10.0;
+
+					if( Math.abs(distanceX) <= (barThickness * 0.5) )
+					{
+
+						// The player is over this bar, but are they high enough to climb on top?
+						var newBar = $(this);
+						var barTop = parseFloat(newBar.css('top')) - (barLength * 0.5) - (playerHeight * 0.5);
+
+						// Can player reach the top?
+						// console.log('player collided with new bar');
+						playerDistanceFromGround = playerPosition.y - barTop;
+
+						// Prevent player from landing on/climbing up to new ground if distance is too high
+						var climbingThreshold = barTop + (playerHeight * 0.5);
+						if( playerPosition.y > climbingThreshold )
+						{
+							// console.log( playerPositionLastFrame.x, playerPosition.x );
+							playerPosition.x = playerPositionLastFrame.x;
+							playerVelocity.x = 0.0;
+
+							//Search for last bar then return
+							// console.log('checking one more time');
+							checkForBarCollision();
+							return false;
+
+						}
+						else// Player is safely over new bar
+						{
+							currentBarId = newBar.attr('id');
+							return false;
+						}
+						
+					}
+
+				});
+				
 			};
 
 
@@ -205,7 +286,7 @@
 				if( playerVelocity.y < -5.0 )
 					return;
 
-				if( Math.abs(playerDistanceFromGround) <= 10.0 )
+				if( Math.abs(playerDistanceFromGround) <= 5.0 )
 					playerVelocity.y = -10.0;
 			};
 
@@ -234,7 +315,7 @@
 
 	</head>
 
-	<body onclick='placeProgressBar(event)' onkeydown='keyDown(event)' onkeyup='keyUp(event)'>
+	<body onkeydown='keyDown(event)' onkeyup='keyUp(event)'>
 
 		<i id='player' class='fa fa-female fa-2x'></i>
 
