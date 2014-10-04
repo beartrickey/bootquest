@@ -8,6 +8,11 @@
 			bootquest
 		</title>
 
+		<!-- fonts -->
+		<link href='http://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet' type='text/css'>
+
+
+		<!-- jquery -->
 		<script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
 
 		<!-- Latest compiled and minified CSS -->
@@ -34,6 +39,17 @@
 				/*background: linear-gradient(DarkBlue, LightBlue); /* Standard syntax */*/
 			}
 
+
+			.title
+			{
+				position:absolute;
+				top:100px;
+				left:1200px;
+				font-size:100px;
+				font-family:Montserrat;
+				color:white
+			}
+
 			.progress
 			{
 				-ms-transform: rotate(270deg);
@@ -42,16 +58,17 @@
 			}
 
 			#player{
-				color:black;
+				color:white;
 				position:absolute;
-				top:0;
-				left:0;
+				top:160px;
+				left:1300px;
 			}
 
 		</style>
 
 		<script type="text/javascript">
 
+			var gameStarted = false;
 			var player = null;
 			var playerVelocity = new Point(0.0, 0.0);
 			var playerPosition = new Point(0.0, 0.0);
@@ -68,16 +85,52 @@
 
 			$(document).ready( function(){
 
+				// Clouds
+				placeClouds();3
+
 				// Progress bars
 				placeProgressBars();
+
+				// Fire up the game
+				update();
 
 
 				// player
 				player = $('#player');
+				playerPosition = new Point(parseFloat(player.css('left')), parseFloat(player.css('top')));
+				focusCameraOnPlayer();
 
-				update();
+				// start game on player click
+				player.click( function(){
+					if( gameStarted == false )
+					{
+						gameStarted = true;
+						
+					}
+				});
 
 			});
+
+			
+			function placeClouds()
+			{
+
+				for( var i = 0; i < 64; i++ )
+				{
+
+					var top = Math.floor((Math.random() * groundLevel - 200.0));
+					var left = Math.floor(Math.random() * 2500.0);
+					var size = Math.floor(Math.random() * 64.0) + 64.0;
+
+					var cloudDiv = $('<i/>', {
+					    id: 'cloud_' + i,
+					    class: 'cloud fa fa-cloud',
+					    style: 'position:absolute;top:' + top + 'px;left:' + left + 'px;color:white;font-size:7em;',
+					}).appendTo( $("body") );
+
+				}
+
+			};
 
 
 			function placeProgressBars()
@@ -89,7 +142,7 @@
 				for( var i = 0; i < 128; i++ )
 				{
 
-					var top = runningHeight + Math.floor((Math.random() * 30)) - 15;
+					var top = runningHeight + Math.floor((Math.random() * 20)) - 10;
 
 					// Clamping
 					if( top > groundLevel - 10 )
@@ -131,6 +184,9 @@
 			{
 
 				setTimeout( 'update()', 16 );
+
+				if( gameStarted == false )
+					return;
 				
 
 				// Input
@@ -139,11 +195,15 @@
 					playerJump();
 
 				// Left 37 / A 65
-				if(keyStates["37"] == true || keyStates["65"] == true)
+				if(
+					keyStates["37"] == true || 
+					keyStates["65"] == true)
 					playerMoveHorizontal(-1.0);
 
 				// Right 39 / D 68
-				if(keyStates["39"] == true || keyStates["68"] == true)
+				if(
+					keyStates["39"] == true ||
+					keyStates["68"] == true)
 					playerMoveHorizontal(1.0);
 
 
@@ -222,13 +282,16 @@
 				player.css('top', playerPosition.y);
 
 
-				// Scroll window?
-				// var scrollX = window.screenX;
-				// var scrollY = window.screenY;
-
-				window.scrollTo( playerPosition.x - ($(window).width() * 0.5), playerPosition.y );
+				// Scroll window
+				focusCameraOnPlayer();
 
 			};
+
+
+			function focusCameraOnPlayer()
+			{
+				window.scrollTo( playerPosition.x - ($(window).width() * 0.5), playerPosition.y );
+			}
 
 
 			function checkForBarCollision()
@@ -320,7 +383,13 @@
 			var keyStates = {};
 			function keyDown(e)
 			{
-				// console.log(e.keyCode);
+
+				console.log(e.keyCode);
+
+				//prevent defaults
+				if( e.keyCode == '37' || e.keyCode == '39' || e.keyCode == '38' || e.keyCode == '40' )
+					e.preventDefault();
+				
 				keyStates[e.keyCode] = true;
 			};
 
@@ -336,6 +405,7 @@
 
 	<body onkeydown='keyDown(event)' onkeyup='keyUp(event)'>
 
+		<p class='title text-nowrap'>Boot Quest</p>
 		<i id='player' class='fa fa-female fa-2x'></i>
 
 			<!-- 
