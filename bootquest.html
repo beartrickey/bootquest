@@ -193,6 +193,7 @@
 
 					var cloudNode = new gameNode();
 					cloudNode.cloudDiv = cloudDiv.get(0);
+					cloudNode.top = top;
 					cloudNode.left = left;
 					clouds.push( cloudNode );
 
@@ -210,7 +211,8 @@
 				for( var i = 0; i < numBars; i++ )
 				{
 
-					var top = runningHeight + Math.floor((Math.random() * 20)) - 10;
+					// var top = runningHeight + Math.floor((Math.random() * 20)) - 10;
+					var top = runningHeight + Math.floor((Math.random() * 40)) - 20;
 
 					// Clamping
 					if( top > groundLevel - 10 )
@@ -396,6 +398,25 @@
 							wifi.active = false;
 							wifi.wifiDiv.style.visibility = 'hidden';
 						}
+
+						// Cloud collision
+						for( var c = 0; c < numClouds; c++ )
+						{
+							var cloud = clouds[c];
+							var halfCloudSize = 50.0;
+							var halfWifiSize = 10.0;
+							var distance = Math.sqrt( Math.pow(((wifi.top + halfWifiSize) - (cloud.top + halfCloudSize)), 2) + Math.pow(((wifi.left + halfWifiSize) - (cloud.left + halfCloudSize)), 2) );
+							var threshold = 50.0;
+
+							if( distance < threshold )
+							{
+								wifi.active = false;
+								wifi.wifiDiv.style.visibility = 'hidden';
+								break;
+							}
+
+						}
+
 					}
 				}
 
