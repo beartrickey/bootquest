@@ -43,19 +43,19 @@
 			.title
 			{
 				position:absolute;
-				top:95px;
+				top:93px;
 				left:1176px;
 				font-size:100px;
 				font-family:Montserrat;
 				color:white
 			}
 
-			.progress
+			/*.progress
 			{
 				-ms-transform: rotate(270deg);
 			    -webkit-transform: rotate(270deg);
 			    transform: rotate(270deg);
-			}
+			}*/
 
 			#player{
 				color:white;
@@ -78,12 +78,22 @@
 			var friction = 0.875;
 			var gravity = 0.5;
 			var groundLevel = 800.0;
+			
 			var numBars = 128;
 			var barThickness = 20;
 			var rightLimit = barThickness * (numBars - 2);
 
+			var numClouds = 4;
 			var clouds = [];
+
+			
 			var progressBars = [];
+
+			var wifiReloadSpeed = 10;
+			var wifiReloadCounter = 0;
+			var wifiSpeed = 3.0;
+			var numWifis = 16;
+			var wifis = [];
 
 			function gameNode()
 			{
@@ -98,6 +108,9 @@
 
 				// Progress bars
 				placeProgressBars();
+
+				// Wifis
+				makeWifis();
 
 				// Fire up the game
 				update();
@@ -119,11 +132,54 @@
 
 			});
 
+
+			function makeWifis()
+			{
+
+				for( var i = 0; i < numWifis; i++ )
+				{
+
+					var wifiDiv = $('<i/>', {
+					    id: 'wifi_' + i,
+					    class: 'wifi fa fa-wifi',
+					    style: 'position:absolute;top:0px;left:0px;color:white;font-size:2em;visibility:hidden',
+					}).appendTo( $("body") );
+
+					var wifiNode = new gameNode();
+					wifiNode.wifiDiv = wifiDiv.get(0);
+					wifiNode.active = false;
+					wifiNode.left = 0.0;
+					wifiNode.top = 0.0;
+					wifiNode.velocity = new Point(0.0, 0.0);
+					wifis.push( wifiNode );
+
+				}
+
+			};
+
+
+			function getFreeWifi()
+			{
+
+				for( var i = 0; i < numWifis; i++ )
+				{
+
+					if( wifis[i].active == false )
+					{
+						return wifis[i];
+					}
+
+				}
+
+				return null;
+
+			};
+
 			
 			function placeClouds()
 			{
 
-				for( var i = 0; i < 4; i++ )
+				for( var i = 0; i < numClouds; i++ )
 				{
 
 					var top = Math.floor((Math.random() * groundLevel - 300.0)) + 100.0;
@@ -184,6 +240,8 @@
 					    style: 'width:100%',
 					}).appendTo(rootDiv);
 
+					// Rotate
+					rotate( rootDiv, 270 );
 
 					var progressNode = new gameNode();
 					progressNode.left = left;
@@ -210,17 +268,21 @@
 				if(keyStates["32"] == true)
 					playerJump();
 
-				// Left 37 / A 65
-				if(
-					keyStates["37"] == true || 
-					keyStates["65"] == true)
+				// A 65
+				if( keyStates["65"] == true )
 					playerMoveHorizontal(-1.0);
 
-				// Right 39 / D 68
-				if(
-					keyStates["39"] == true ||
-					keyStates["68"] == true)
+				// D 68
+				if( keyStates["68"] == true )
 					playerMoveHorizontal(1.0);
+
+				// Left 37
+				if( keyStates["37"] == true )
+					shootWifi(-1.0);
+
+				// Right 39
+				if( keyStates["39"] == true )
+					shootWifi(1.0);
 
 
 				// Update player physics
@@ -299,15 +361,42 @@
 
 
 				// update clouds
-				for(var c = 0, length = clouds.length; c < length; c++)
+				for(var c = 0; c < numClouds; c++)
 				{
 				    cloud = clouds[c];
 				    cloud.left -= 0.5;
 				    
+				    // Wrap clouds
 				    if( cloud.left < -64.0 )
 				    	cloud.left = rightLimit - 64.0;
 
 				    cloud.cloudDiv.style.left = cloud.left;
+				}
+
+
+				// Update wifis
+				wifiReloadCounter--;
+				for( var w = 0; w < numWifis; w++ )
+				{
+					if( wifis[w].active == true )
+					{
+						var wifi = wifis[w];
+						wifi.left += wifi.velocity.x;
+						wifi.top += wifi.velocity.y;
+						wifi.wifiDiv.style.left = wifi.left;
+						wifi.wifiDiv.style.top = wifi.top;
+
+						// Deactivate if outside screen
+						if(
+							wifi.left > rightLimit - 64.0 ||
+							wifi.left < -64.0 ||
+							wifi.top < 0.0 
+						)
+						{
+							wifi.active = false;
+							wifi.wifiDiv.style.visibility = 'hidden';
+						}
+					}
 				}
 
 
@@ -366,6 +455,48 @@
 
 				}
 				
+			};
+
+			function shootWifi( direction )
+			{
+
+				if( wifiReloadCounter > 0 )
+					return;
+
+				var wifi = getFreeWifi();
+
+				if( wifi == null )
+					return;
+
+				wifiReloadCounter = wifiReloadSpeed;
+				
+				wifi.active = true;
+				wifi.wifiDiv.style.visibility = 'visible';
+				wifi.velocity = new Point( direction * wifiSpeed, -wifiSpeed );
+				wifi.left = playerPosition.x;
+				wifi.top = playerPosition.y;
+
+				// Rotate
+				if( direction == 1.0 )
+					rotate( $("#" + wifi.wifiDiv.id), 45 );
+				else
+					rotate( $("#" + wifi.wifiDiv.id), 315 );
+
+			};
+
+			function rotate( _element, _angle )
+			{
+
+			    var rotate = 'rotate(' + _angle + 'deg)';
+
+			    _element.css({
+			        '-webkit-transform': rotate,
+			        '-moz-transform': rotate,
+			        '-o-transform': rotate,
+			        '-ms-transform': rotate,
+			        'transform': rotate
+			    })
+
 			};
 
 
