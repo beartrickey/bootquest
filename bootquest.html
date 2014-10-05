@@ -195,6 +195,7 @@
 					cloudNode.cloudDiv = cloudDiv.get(0);
 					cloudNode.top = top;
 					cloudNode.left = left;
+					cloudNode.jitterCounter = 0;
 					clouds.push( cloudNode );
 
 				}
@@ -367,12 +368,23 @@
 				{
 				    cloud = clouds[c];
 				    cloud.left -= 0.5;
+
+				    var randOffsetX = 0.0;
+				    var randOffsetY = 0.0;
+				    if( cloud.jitterCounter > 0 )
+				    {
+				    	cloud.jitterCounter--;
+				    	randOffsetX = (Math.random() * 10.0) - 5.0;
+				    	randOffsetY = (Math.random() * 10.0) - 5.0;
+				    }
+
 				    
 				    // Wrap clouds
 				    if( cloud.left < -64.0 )
 				    	cloud.left = rightLimit - 64.0;
 
-				    cloud.cloudDiv.style.left = cloud.left;
+				    cloud.cloudDiv.style.left = cloud.left + randOffsetX;
+				    cloud.cloudDiv.style.top = cloud.top + randOffsetY;
 				}
 
 
@@ -412,6 +424,7 @@
 							{
 								wifi.active = false;
 								wifi.wifiDiv.style.visibility = 'hidden';
+								cloud.jitterCounter = 10;
 								break;
 							}
 
