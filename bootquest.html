@@ -32,7 +32,7 @@
 			body
 			{
 				background-color: LightBlue;
-				cursor: crosshair;
+				/*cursor: crosshair;*/
 				/*background: -webkit-linear-gradient(DarkBlue, LightBlue); /* For Safari 5.1 to 6.0 */*/
 				/*background: -o-linear-gradient(DarkBlue, LightBlue);  For Opera 11.1 to 12.0 */
 				/*background: -moz-linear-gradient(DarkBlue, LightBlue); /* For Firefox 3.6 to 15 */*/
@@ -44,7 +44,7 @@
 			{
 				position:absolute;
 				top:93px;
-				left:1176px;
+				left:550px;
 				font-size:100px;
 				font-family:Montserrat;
 				color:white
@@ -61,7 +61,16 @@
 				color:white;
 				position:absolute;
 				top:160px;
-				left:1300px;
+				left:674px;
+			}
+
+			#toolTip{
+				position:absolute;
+				left: 50px;
+				top: 125px;
+				font-size: 20px;
+				/*width: 200px;
+				height: 100px;*/
 			}
 
 		</style>
@@ -79,13 +88,12 @@
 			var gravity = 0.5;
 			var groundLevel = 800.0;
 			
-			var numBars = 128;
+			var numBars = 70;
 			var barThickness = 20;
 			var rightLimit = barThickness * (numBars - 2);
 
 			var numClouds = 4;
 			var clouds = [];
-
 			
 			var progressBars = [];
 
@@ -182,8 +190,8 @@
 				for( var i = 0; i < numClouds; i++ )
 				{
 
-					var top = Math.floor((Math.random() * groundLevel - 300.0)) + 100.0;
-					var left = Math.floor(Math.random() * rightLimit - 64.0);
+					var top = Math.floor((Math.random() * (groundLevel - 500.0))) + 200.0;
+					var left = Math.floor(Math.random() * (rightLimit - 64.0));
 
 					var cloudDiv = $('<i/>', {
 					    id: 'cloud_' + i,
@@ -283,6 +291,10 @@
 				if( keyStates["37"] == true )
 					shootWifi(-1.0);
 
+				// Right 38
+				if( keyStates["38"] == true )
+					shootWifi(0.0);
+
 				// Right 39
 				if( keyStates["39"] == true )
 					shootWifi(1.0);
@@ -361,6 +373,10 @@
 				// Update position
 				player.css('left', playerPosition.x);
 				player.css('top', playerPosition.y);
+
+
+				// Update toolTip
+				
 
 
 				// update clouds
@@ -513,8 +529,10 @@
 				// Rotate
 				if( direction == 1.0 )
 					rotate( $("#" + wifi.wifiDiv.id), 45 );
-				else
+				else if( direction == -1.0 )
 					rotate( $("#" + wifi.wifiDiv.id), 315 );
+				else if( direction == 0.0 )
+					rotate( $("#" + wifi.wifiDiv.id), 0 );
 
 			};
 
@@ -576,7 +594,7 @@
 			function keyDown(e)
 			{
 
-				console.log(e.keyCode);
+				// console.log(e.keyCode);
 
 				//prevent defaults
 				if( e.keyCode == '37' || e.keyCode == '39' || e.keyCode == '38' || e.keyCode == '40' )
@@ -600,6 +618,17 @@
 		<p class='title text-nowrap'>Cloud</p>
 
 		<i id='player' class='fa fa-female fa-2x'></i>
+
+		<div id='toolTip' class='label label-info'>
+
+			Press A to move left
+			<br><br>
+			Press D to move right
+			<br><br>
+			Press SPACE to jump
+
+			
+		</div>
 
 	</body>
 
