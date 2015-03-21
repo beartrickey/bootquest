@@ -5,7 +5,7 @@
 	<head>
 
 		<title>
-			bootquest
+			AwesomeStrapCloudQuest
 		</title>
 
 		<!-- fonts -->
@@ -32,45 +32,30 @@
 			body
 			{
 				background-color: LightBlue;
-				/*cursor: crosshair;*/
-				/*background: -webkit-linear-gradient(DarkBlue, LightBlue); /* For Safari 5.1 to 6.0 */*/
-				/*background: -o-linear-gradient(DarkBlue, LightBlue);  For Opera 11.1 to 12.0 */
-				/*background: -moz-linear-gradient(DarkBlue, LightBlue); /* For Firefox 3.6 to 15 */*/
-				/*background: linear-gradient(DarkBlue, LightBlue); /* Standard syntax */*/
 			}
 
 
 			.title
 			{
-				position:absolute;
-				top:93px;
-				left:550px;
-				font-size:100px;
-				font-family:Montserrat;
-				color:white
+				position: absolute;
+				font-size: 75px;
+				font-family: Montserrat;
+				color: white
 			}
 
-			/*.progress
-			{
-				-ms-transform: rotate(270deg);
-			    -webkit-transform: rotate(270deg);
-			    transform: rotate(270deg);
-			}*/
-
 			#player{
-				color:white;
-				position:absolute;
-				top:160px;
-				left:674px;
+				color: white;
+				position: absolute;
+				top: 160px;
+				left: 674px;
 			}
 
 			#toolTip{
 				position:absolute;
 				left: 50px;
-				top: 125px;
+				top: 80%;
 				font-size: 20px;
-				/*width: 200px;
-				height: 100px;*/
+				z-index: 100;
 			}
 
 		</style>
@@ -78,30 +63,43 @@
 		<script type="text/javascript">
 
 			var gameStarted = false;
+
+			// Player vars
 			var player = null;
 			var playerVelocity = new Point(0.0, 0.0);
 			var playerPosition = new Point(0.0, 0.0);
 			var playerHeight = 35.0;
+			var playerWidth = 20.0;
 			var playerDistanceFromGround = 0.0;
 			var currentBar = null;
 			var friction = 0.875;
 			var gravity = 0.5;
-			var groundLevel = 800.0;
 			
-			var numBars = 70;
+			// Window dimensions
+			var groundLevel = 650.0;
+			var rightLimit = 0;
+			
+			// Terrain progress bars
+			var numBars = 256;
+			var numActiveBars = 0;
 			var barThickness = 20;
-			var rightLimit = barThickness * (numBars - 2);
-
+			var progressBars = [];
+			
+			// Clouds
 			var numClouds = 4;
 			var clouds = [];
-			
-			var progressBars = [];
 
+			// Wifis
 			var wifiReloadSpeed = 10;
 			var wifiReloadCounter = 0;
 			var wifiSpeed = 3.0;
 			var numWifis = 16;
 			var wifis = [];
+
+			// Files
+			var numFiles = 16;
+			var files = [];
+
 
 			function gameNode()
 			{
@@ -111,23 +109,36 @@
 
 			$(document).ready( function(){
 
+				// ====================================================
+				// Window Management
+				// ====================================================
+
+				// Disable scrolling
+				$("body").css("overflow", "hidden");
+
+				// Handle window resizing
+				onResize();
+
+				$(window).resize(function(){
+					onResize();
+				});
+
+				// ====================================================
+				// Game objects
+				// ====================================================
+
 				// Clouds
 				placeClouds();
 
 				// Progress bars
-				placeProgressBars();
+				makeProgressBars();
 
 				// Wifis
 				makeWifis();
 
-				// Fire up the game
-				update();
-
-
 				// player
 				player = $('#player');
 				playerPosition = new Point(parseFloat(player.css('left')), parseFloat(player.css('top')));
-				focusCameraOnPlayer();
 
 				// start game on player click
 				player.click( function(){
@@ -138,7 +149,73 @@
 					}
 				});
 
+				// ====================================================
+				// Start the game loop
+				// ====================================================
+				update();
+
 			});
+
+
+			function onResize()
+			{
+				rightLimit = $( window ).width();
+				groundLevel = $( window ).height();
+			}
+
+
+			function makeProgressBars()
+			{
+
+				var runningHeight = 700.0;
+				var maxHeight = 300.0;
+
+				for( var i = 0; i < numBars; i++ )
+				{
+
+					// var top = runningHeight + Math.floor((Math.random() * 20)) - 10;
+					var top = runningHeight + Math.floor((Math.random() * 40)) - 20;
+
+					// Clamping
+					if( top > groundLevel - 20 )
+						top = groundLevel - 20;
+					if( top < maxHeight )
+						top = maxHeight;
+
+					// Incremeents of 5
+					top = Math.ceil(top/5) * 5.0;
+
+					var distanceToGround = groundLevel - top;
+					var thisBarLength = distanceToGround * 2.0;
+					var left = (i * barThickness) - (thisBarLength * 0.5) - (barThickness * 0.5);
+					runningHeight = top;
+
+					// console.log( mousex + ', ' + left);
+
+					var rootDiv = $('<div/>', {
+					    id: 'bar_' + i,
+					    class: 'progress',
+					    style: 'position:absolute;width:' + thisBarLength + 'px;top:' + top + 'px;left:' + left + 'px;',
+					}).appendTo( $("body") );
+
+					var barDiv = $('<div/>', {
+					    class: 'progress-bar progress-bar-striped progress-bar-success',
+					    role: 'progressbar',
+					    style: 'width:100%',
+					}).appendTo(rootDiv);
+
+					// Rotate
+					rotate( rootDiv, 270 );
+
+					var progressNode = new gameNode();
+					progressNode.left = left;
+					progressNode.top = top;
+					progressNode.width = thisBarLength;
+					progressBars.push( progressNode );
+
+				}
+
+			};
 
 
 			function makeWifis()
@@ -204,61 +281,8 @@
 					cloudNode.top = top;
 					cloudNode.left = left;
 					cloudNode.jitterCounter = 0;
+					cloudNode.scale = 1.0;
 					clouds.push( cloudNode );
-
-				}
-
-			};
-
-
-			function placeProgressBars()
-			{
-
-				var runningHeight = 700.0;
-				var maxHeight = 300.0;
-
-				for( var i = 0; i < numBars; i++ )
-				{
-
-					// var top = runningHeight + Math.floor((Math.random() * 20)) - 10;
-					var top = runningHeight + Math.floor((Math.random() * 40)) - 20;
-
-					// Clamping
-					if( top > groundLevel - 10 )
-						top = groundLevel - 10;
-					if( top < maxHeight )
-						top = maxHeight;
-
-					// Incremeents of 5
-					top = Math.ceil(top/5) * 5.0;
-
-					var distanceToGround = groundLevel - top;
-					var thisBarLength = distanceToGround * 2.0;
-					var left = (i * barThickness) - (thisBarLength * 0.5) - (barThickness * 0.5);
-					runningHeight = top;
-
-					// console.log( mousex + ', ' + left);
-
-					var rootDiv = $('<div/>', {
-					    id: 'bar_' + i,
-					    class: 'progress',
-					    style: 'position:absolute;width:' + thisBarLength + 'px;top:' + top + 'px;left:' + left + 'px',
-					}).appendTo( $("body") );
-
-					var barDiv = $('<div/>', {
-					    class: 'progress-bar progress-bar-striped progress-bar-success',
-					    role: 'progressbar',
-					    style: 'width:100%',
-					}).appendTo(rootDiv);
-
-					// Rotate
-					rotate( rootDiv, 270 );
-
-					var progressNode = new gameNode();
-					progressNode.left = left;
-					progressNode.top = top;
-					progressNode.width = thisBarLength;
-					progressBars.push( progressNode );
 
 				}
 
@@ -364,9 +388,9 @@
 				{
 					playerPosition.x = 0.0;
 				}
-				else if( playerPosition.x > rightLimit )
+				else if( playerPosition.x > rightLimit - playerWidth )
 				{
-					playerPosition.x = rightLimit;
+					playerPosition.x = rightLimit - playerWidth;
 				}
 
 
@@ -392,6 +416,18 @@
 				    	cloud.jitterCounter--;
 				    	randOffsetX = (Math.random() * 10.0) - 5.0;
 				    	randOffsetY = (Math.random() * 10.0) - 5.0;
+
+				    	// Clouds shrink as they jitter
+				    	cloud.scale -= 0.01;
+				    	cloud.cloudDiv.style.transform = "scale(" + cloud.scale + "," + cloud.scale + ")";
+
+				    	// Reset cloud when small enough
+				    	if( cloud.scale <= 0.1 )
+				    	{
+				    		cloud.scale = 1.0;
+				    		cloud.left = rightLimit - 64.0;
+				    	}
+
 				    }
 
 				    
@@ -433,7 +469,10 @@
 							var cloud = clouds[c];
 							var halfCloudSize = 50.0;
 							var halfWifiSize = 10.0;
-							var distance = Math.sqrt( Math.pow(((wifi.top + halfWifiSize) - (cloud.top + halfCloudSize)), 2) + Math.pow(((wifi.left + halfWifiSize) - (cloud.left + halfCloudSize)), 2) );
+							var distance = Math.sqrt(
+								Math.pow(((wifi.top + halfWifiSize) - (cloud.top + halfCloudSize)), 2) +
+								Math.pow(((wifi.left + halfWifiSize) - (cloud.left + halfCloudSize)), 2)
+							);
 							var threshold = 50.0;
 
 							if( distance < threshold )
@@ -449,17 +488,7 @@
 					}
 				}
 
-
-				// Scroll window
-				focusCameraOnPlayer();
-
 			};
-
-
-			function focusCameraOnPlayer()
-			{
-				window.scrollTo( playerPosition.x - ($(window).width() * 0.5), playerPosition.y );
-			}
 
 
 			function checkForBarCollision()
@@ -523,7 +552,7 @@
 				wifi.active = true;
 				wifi.wifiDiv.style.visibility = 'visible';
 				wifi.velocity = new Point( direction * wifiSpeed, -wifiSpeed );
-				wifi.left = playerPosition.x;
+				wifi.left = playerPosition.x - 5.0;
 				wifi.top = playerPosition.y;
 
 				// Rotate
@@ -533,7 +562,6 @@
 					rotate( $("#" + wifi.wifiDiv.id), 315 );
 				else if( direction == 0.0 )
 					rotate( $("#" + wifi.wifiDiv.id), 0 );
-
 			};
 
 			function rotate( _element, _angle )
@@ -615,18 +643,17 @@
 
 	<body onkeydown='keyDown(event)' onkeyup='keyUp(event)'>
 
-		<p class='title text-nowrap'>Cloud</p>
+		<p class='title'>AwesomeStrap CloudQuest</p>
 
 		<i id='player' class='fa fa-female fa-2x'></i>
 
 		<div id='toolTip' class='label label-info'>
 
-			Press A to move left
+			A : Left
 			<br><br>
-			Press D to move right
+			B : Right
 			<br><br>
-			Press SPACE to jump
-
+			SPACE : Jump
 			
 		</div>
 
