@@ -10,7 +10,7 @@
 
 		<!-- fonts -->
 		<link href='http://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet' type='text/css'>
-
+		<script src="fontAwesomeIconList.js"></script>
 
 		<!-- jquery -->
 		<script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
@@ -144,31 +144,9 @@
 			};
 
 
-			function cloudWrapComponent( _gameNode )
-			{
-				// Used to wrap objects around the left/right side of play area
-
-				this.gameNode = _gameNode;
-
-				this.update = function()
-				{
-
-					if( this.gameNode.position.x < 0.0 )
-					{
-						this.gameNode.position.x = 0.0;
-					}
-					else if( this.gameNode.position.x > rightLimit - this.gameNode.width )
-					{
-						this.gameNode.position.x = rightLimit - this.gameNode.width;
-					}
-
-				};
-			};
-
-
 			function physicsWrapComponent( _gameNode )
 			{
-				// Used to wrap physics objects so they don't fall into progress bars
+				// Used to wrap objects to the other side of the screen when they leave the left/right bounds
 
 				this.gameNode = _gameNode;
 
@@ -284,14 +262,14 @@
 				// Clouds
 				placeClouds();
 
-				// Progress bars
-				makeProgressBars();
-
 				// Wifis
 				makeWifis();
 
 				// Files
 				makeFiles();
+
+				// Progress bars
+				makeProgressBars();
 
 				// player
 				player = $('#player');
@@ -753,7 +731,12 @@
 								if( Math.random() < 0.5 )
 								{
 							    	var file = getFreeFile();
-							    	file.active = true;
+									file.active = true;
+
+									// Randomize icon
+									var randIconIndex = Math.floor(Math.random() * fontAwesomeIconList.length);
+									file.div.className = "fa " + fontAwesomeIconList[randIconIndex];
+
 							    	file.div.style.visibility = 'visible';
 
 							    	file.velocity = new Point(
@@ -918,7 +901,7 @@
 		<p class='title'>AwesomeCloud StrapQuest</p>
 		<p class='subtitle1'>Made with Twitter Bootstrap and Font Awesome</p>
 		<p class='subtitle2'>Press "A", "D", and "SPACE" to move and jump.</p>
-		<p class='subtitle2'>Press the arrow keys to shoot wifis at the clouds.</p>
+		<p class='subtitle2'>Press the arrow keys to shoot your wifi at the clouds and download files.</p>
 
 		<i id='player' class='fa fa-female fa-2x'></i>
 
