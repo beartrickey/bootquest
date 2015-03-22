@@ -62,8 +62,8 @@
 			#player{
 				color: white;
 				position: absolute;
-				top: 160px;
-				left: 674px;
+				top: -100px;
+				left: -100px;
 			}
 
 			#toolTip{
@@ -102,7 +102,7 @@
 			var progressBars = [];
 			
 			// Clouds
-			var numClouds = 4;
+			var numClouds = 6;
 			var clouds = [];
 
 			// Wifis
@@ -119,6 +119,144 @@
 
 			function gameNode()
 			{
+
+				this.active = false;
+				this.position = Point(0,0);
+				this.velocity = Point(0,0);
+				this.scale = 1.0;
+				this.width = 0.0;
+				this.height = 0.0;
+				this.div = null;
+				this.jqueryElement = null;
+
+				this.componentList = [];
+
+				this.updateComponents = function()
+				{
+
+					for( var c = 0; c < this.componentList.length; c++ )
+					{
+						this.componentList[c].update();
+					}
+
+				};
+
+			};
+
+
+			function cloudWrapComponent( _gameNode )
+			{
+				// Used to wrap objects around the left/right side of play area
+
+				this.gameNode = _gameNode;
+
+				this.update = function()
+				{
+
+					if( this.gameNode.position.x < 0.0 )
+					{
+						this.gameNode.position.x = 0.0;
+					}
+					else if( this.gameNode.position.x > rightLimit - this.gameNode.width )
+					{
+						this.gameNode.position.x = rightLimit - this.gameNode.width;
+					}
+
+				};
+			};
+
+
+			function physicsWrapComponent( _gameNode )
+			{
+				// Used to wrap physics objects so they don't fall into progress bars
+
+				this.gameNode = _gameNode;
+
+				this.update = function()
+				{
+					if( this.gameNode.position.x < 0.0 )
+					{
+						this.gameNode.position.x = rightLimit;
+					}
+					else if( this.gameNode.position.x > rightLimit - this.gameNode.width )
+					{
+						this.gameNode.position.x = 0.0;
+
+						if( this.gameNode.position.y > progressBars[0].barTop )
+							this.gameNode.position.y = progressBars[0].barTop - this.gameNode.height;
+					}
+				};
+
+			};
+
+
+			function physicsComponent( _gameNode )
+			{
+				// Used for gravity, friction, and collision with progress bars
+
+				this.gameNode = _gameNode;
+				this.currentBar = null;
+				this.distanceToGround = 0.0;
+
+				this.update = function()
+				{
+
+					this.gameNode.velocity.y += gravity;
+
+					this.gameNode.position.x += this.gameNode.velocity.x;
+					this.gameNode.position.y += this.gameNode.velocity.y;
+
+					this.gameNode.div.style.left = this.gameNode.position.x;
+					this.gameNode.div.style.top = this.gameNode.position.y;
+
+					// gameNode v bar collision
+					for(var p = 0; p < numBars; p++)
+					{
+
+						// Is gameNode in the same x space?
+						var progressBar = progressBars[p];
+						var distanceX = this.gameNode.position.x - progressBar.left - (progressBar.width * 0.5) + 10.0;
+
+						if( Math.abs(distanceX) <= (barThickness * 0.5) )
+						{
+
+							// The gameNode is over this bar, but are they high enough to climb on top?
+							var barTop = progressBar.top - (progressBar.width * 0.5) - (this.gameNode.height * 0.5);
+
+							// Can gameNode reach the top?
+							this.distanceToGround = this.gameNode.position.y - barTop;
+
+							// Prevent player from landing on/climbing up to new ground if distance is too high
+							var climbingThreshold = barTop + (this.gameNode.height * 0.5);
+							if( this.gameNode.position.y > climbingThreshold )
+							{
+								// console.log( playerPositionLastFrame.x, playerPosition.x );
+								this.gameNode.position.x = this.gameNode.position.x - this.gameNode.velocity.x;
+								this.gameNode.velocity.x = 0.0;
+								break;
+
+							}
+							else// gameNode is safely over new bar
+							{
+								this.currentBar = progressBar;
+								break;
+							}
+						}
+					}
+
+					if( this.currentBar != null )
+					{
+						var barTop = this.currentBar.top - (this.currentBar.width * 0.5) - (this.gameNode.height * 0.5);
+						this.distanceToGround = this.gameNode.position.y - barTop;
+
+						if( this.gameNode.position.y > barTop )// Snap gameNode to top of bar
+						{
+							this.gameNode.position.y = barTop;
+							this.gameNode.velocity.y *= -0.5;
+							this.gameNode.velocity.x *= friction;
+						}
+					}
+				};
 
 			};
 
@@ -157,15 +295,7 @@
 
 				// player
 				player = $('#player');
-				playerPosition = new Point(parseFloat(player.css('left')), parseFloat(player.css('top')));
-
-				// start game on player click
-				player.click( function(){
-					if( gameStarted == false )
-					{
-						gameStarted = true;
-					}
-				});
+				playerPosition = new Point( $(window).width() * 0.5, -100.0 );
 
 				// ====================================================
 				// Start the game loop
@@ -268,20 +398,23 @@
 				for( var i = 0; i < numFiles; i++ )
 				{
 
-					var fileDiv = $('<i/>', {
+					var div = $('<i/>', {
 					    id: 'file_' + i,
 					    class: 'file fa fa-file',
 					    style: 'position:absolute;top:0px;left:0px;color:white;font-size:2em;visibility:hidden',
 					}).appendTo( $("body") );
 
 					var fileNode = new gameNode();
-					fileNode.fileDiv = fileDiv.get(0);
+					fileNode.div = div.get(0);
 					fileNode.active = false;
-					fileNode.currentBar = null;
-					fileNode.left = 0.0;
-					fileNode.top = 0.0;
+					fileNode.position = new Point(0.0, 0.0);
 					fileNode.velocity = new Point(0.0, 0.0);
+					fileNode.width = 10.0;
+					fileNode.height = 10.0;
 					files.push( fileNode );
+
+					fileNode.componentList.push(new physicsComponent(fileNode));
+					fileNode.componentList.push(new physicsWrapComponent(fileNode));
 
 				}
 
@@ -494,11 +627,11 @@
 
 				if( playerPosition.x < 0.0 )
 				{
-					playerPosition.x = 0.0;
+					playerPosition.x = rightLimit;
 				}
-				else if( playerPosition.x > rightLimit - playerWidth )
+				else if( playerPosition.x > rightLimit )
 				{
-					playerPosition.x = rightLimit - playerWidth;
+					playerPosition.x = 0.0;
 				}
 
 
@@ -516,47 +649,19 @@
 					if( file.active == false )
 						continue;
 
-					file.velocity.y += gravity;
-
-					file.left += file.velocity.x;
-					file.top += file.velocity.y;
-
-					file.fileDiv.style.left = file.left;
-					file.fileDiv.style.top = file.top;
-
-					if( file.top > groundLevel )
-					{
-						file.active = false;
-						file.fileDiv.style.visibility = "hidden";
-					}
-
-					// File v bar collision
-					fileVsBarCollision( file );
-
-					if( file.currentBar != null )
-					{
-						var barTop = file.currentBar.top - (file.currentBar.width * 0.5) - (playerHeight * 0.5);
-						var fileDistanceFromGround = file.top - barTop;
-
-						if( file.top > barTop )// Snap file to top of bar
-						{
-							file.top = barTop;
-							file.velocity.y *= -0.5;
-							file.velocity.x *= friction;
-						}
-					}
+					file.updateComponents();
 
 					// File v player collision
 					var distance = Math.sqrt(
-						Math.pow(((playerPosition.y + 10.0) - (file.top + 10.0)), 2) +
-						Math.pow(((playerPosition.x + 10.0) - (file.left + 10.0)), 2)
+						Math.pow(((playerPosition.y + 10.0) - (file.position.y + 10.0)), 2) +
+						Math.pow(((playerPosition.x + 10.0) - (file.position.x + 10.0)), 2)
 					);
 					var threshold = 50.0;
 
 					if( distance < threshold )
 					{
 						file.active = false;
-						file.fileDiv.style.visibility = "hidden";
+						file.div.style.visibility = "hidden";
 					}
 
 				}
@@ -649,15 +754,15 @@
 								{
 							    	var file = getFreeFile();
 							    	file.active = true;
-							    	file.fileDiv.style.visibility = 'visible';
+							    	file.div.style.visibility = 'visible';
 
 							    	file.velocity = new Point(
-							    		(Math.random() * 4.0) - 2.0,
+							    		(Math.random() * 8.0) - 4.0,
 							    		(Math.random() * -8.0)
 							    	);
 
-							    	file.fileDiv.style.top = file.top = cloud.top - 10.0;
-							    	file.fileDiv.style.left = file.left = cloud.left + 10.0;
+							    	file.div.style.top = file.position.y = cloud.top - 10.0;
+							    	file.div.style.left = file.position.x = cloud.left + 10.0;
 						    	}
 
 								break;
@@ -668,51 +773,6 @@
 					}
 				}
 
-			};
-
-
-
-			function fileVsBarCollision( file )
-			{
-
-				// Player could be over a gap, or a new bar. Check.
-				for(var p = 0; p < numBars; p++)
-				{
-
-					// Is player in the same x space?
-					var progressBar = progressBars[p];
-					var distanceX = file.left - progressBar.left - (progressBar.width * 0.5) + 10.0;
-
-					if( Math.abs(distanceX) <= (barThickness * 0.5) )
-					{
-
-						// The player is over this bar, but are they high enough to climb on top?
-						var barTop = progressBar.top - (progressBar.width * 0.5) - (playerHeight * 0.5);
-
-						// Can player reach the top?
-						var fileDistanceFromGround = file.top - barTop;
-
-						// Prevent player from landing on/climbing up to new ground if distance is too high
-						var climbingThreshold = barTop + (playerHeight * 0.5);
-						if( file.top > climbingThreshold )
-						{
-							// console.log( playerPositionLastFrame.x, playerPosition.x );
-							file.left = file.left - file.velocity.x;
-							file.velocity.x = 0.0;
-
-							return false;
-
-						}
-						else// Player is safely over new bar
-						{
-							file.currentBar = progressBar;
-							return false;
-						}
-						
-					}
-
-				}
-				
 			};
 
 
@@ -833,6 +893,8 @@
 			{
 
 				// console.log(e.keyCode);
+				if( gameStarted == false )
+					gameStarted = true;
 
 				//prevent defaults
 				if( e.keyCode == '37' || e.keyCode == '39' || e.keyCode == '38' || e.keyCode == '40' )
