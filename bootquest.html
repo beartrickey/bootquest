@@ -153,17 +153,16 @@
 
 				this.update = function()
 				{
-					this.gameNode.justWrapped = false;
-					if( this.gameNode.position.x < 0.5 )
+					if( this.gameNode.position.x < this.gameNode.width )
 					{
-						this.gameNode.position.x = progressBars[rightMostBarIndex].left;
+						this.gameNode.position.x = progressBars[rightMostBarIndex].position.x - this.gameNode.width;
 
 						if( this.gameNode.position.y > progressBars[rightMostBarIndex].barTop )
 							this.gameNode.position.y = progressBars[rightMostBarIndex].barTop - this.gameNode.height;
 					}
-					else if( this.gameNode.position.x > rightLimit - this.gameNode.width - 0.5 )
+					else if( this.gameNode.position.x > rightLimit - this.gameNode.width )
 					{
-						this.gameNode.position.x = 0.5;
+						this.gameNode.position.x = this.gameNode.width;
 
 						if( this.gameNode.position.y > progressBars[0].barTop )
 							this.gameNode.position.y = progressBars[0].barTop - this.gameNode.height;
@@ -198,13 +197,13 @@
 
 						// Is gameNode in the same x space?
 						var progressBar = progressBars[p];
-						var distanceX = this.gameNode.position.x - progressBar.left - (progressBar.width * 0.5) + 10.0;
+						var distanceX = this.gameNode.position.x - progressBar.position.x - (progressBar.width * 0.5) + 10.0;
 
 						if( Math.abs(distanceX) <= (barThickness * 0.5) )
 						{
 
 							// The gameNode is over this bar, but are they high enough to climb on top?
-							var barTop = progressBar.top - (progressBar.width * 0.5) - (this.gameNode.height * 0.5);
+							var barTop = progressBar.position.y - (progressBar.width * 0.5) - (this.gameNode.height * 0.5);
 
 							// Can gameNode reach the top?
 							this.distanceToGround = this.gameNode.position.y - barTop;
@@ -229,7 +228,7 @@
 
 					if( this.currentBar != null )
 					{
-						var barTop = this.currentBar.top - (this.currentBar.width * 0.5) - (this.gameNode.height * 0.5);
+						var barTop = this.currentBar.position.y - (this.currentBar.width * 0.5) - (this.gameNode.height * 0.5);
 						this.distanceToGround = this.gameNode.position.y - barTop;
 
 						if( this.gameNode.position.y > barTop )// Snap gameNode to top of bar
@@ -325,7 +324,7 @@
 
 					var distanceToGround = groundLevel - top;
 					var thisBarLength = distanceToGround * 2.0;
-					var left = (i * barThickness) - (thisBarLength * 0.5) - (barThickness * 0.5);
+					var left = (i * barThickness) - (thisBarLength * 0.5) + (barThickness * 0.5);
 					runningHeight = top;
 
 					// console.log( mousex + ', ' + left);
@@ -347,8 +346,7 @@
 
 					var progressNode = new gameNode();
 					progressNode.div = rootDiv;
-					progressNode.left = left;
-					progressNode.top = top;
+					progressNode.position = new Point(left, top);
 					progressNode.width = thisBarLength;
 					progressBars.push( progressNode );
 
@@ -568,48 +566,29 @@
 				playerPosition.x += playerVelocity.x;
 				playerPosition.y += playerVelocity.y;
 
-
-				// Is the player still on current bar?
-				if( currentBar != null )
+				// Wrap player around screen
+				if( playerPosition.x < 0.0 )
 				{
-					var distanceX = playerPosition.x - currentBar.left - (currentBar.width * 0.5) + 10.0;
-
-					if( Math.abs(distanceX) <= (barThickness * 0.5) )
-					{
-						// Player is still over current bar. Do nothing
-					}
-					else
-					{
-						currentBar = null;
-					}
-
+					playerPosition.x = rightLimit + playerPosition.x;
 				}
-
+				else if( playerPosition.x > rightLimit)
+				{
+					playerPosition.x = playerPosition.x - rightLimit;
+				}
 
 				// Check for new bar if null
-				if( currentBar == null )
-				{
-					checkForBarCollision();
-				}
+				checkForBarCollision();
 				
 
 				// If the player is over a bar, check if player fell through ground
-				if( currentBar != null )
-				{
-					var barTop = currentBar.top - (currentBar.width * 0.5) - (playerHeight * 0.5);
-					playerDistanceFromGround = playerPosition.y - barTop;
+				var barTop = currentBar.position.y - (currentBar.width * 0.5) - (playerHeight * 0.5);
+				playerDistanceFromGround = playerPosition.y - barTop;
 
-					if( playerPosition.y > barTop )// Snap player to top of bar
-					{
-						playerPosition.y = barTop;
-						playerVelocity.y *= -0.5;
-					}
-				}
-				else
+				if( playerPosition.y > barTop )// Snap player to top of bar
 				{
-					// console.log('player has no bar. falling');
+					playerPosition.y = barTop;
+					playerVelocity.y *= -0.5;
 				}
-
 
 				// Clamp at bottom of screen
 				if( playerPosition.y >= groundLevel )
@@ -617,16 +596,6 @@
 					playerPosition.y = groundLevel;
 					playerVelocity.y *= -0.5;
 				}
-
-				if( playerPosition.x < 0.0 )
-				{
-					playerPosition.x = rightLimit;
-				}
-				else if( playerPosition.x > rightLimit )
-				{
-					playerPosition.x = 0.0;
-				}
-
 
 				// Update position
 				player.css('left', playerPosition.x);
@@ -774,49 +743,40 @@
 			};
 
 
+			function getBar( _x )
+			{
+
+				return Math.floor( _x / barThickness );
+
+			}
+
+
 			function checkForBarCollision()
 			{
 
-				// Player could be over a gap, or a new bar. Check.
-				for(var p = 0; p < numBars; p++)
+				var collisionBarIndex = getBar( playerPosition.x + (playerWidth * 0.5) );
+				var collisionBar = progressBars[collisionBarIndex];
+
+				// The player is over this bar, but are they high enough to climb on top?
+				var barTop = collisionBar.position.y - (collisionBar.width * 0.5) - (playerHeight * 0.5);
+
+				// Can player reach the top?
+				playerDistanceFromGround = playerPosition.y - barTop;
+
+				// Prevent player from landing on/climbing up to new ground if distance is too high
+				var climbingThreshold = barTop + (playerHeight * 0.5);
+				if( playerPosition.y > climbingThreshold )
 				{
-
-					// Is player in the same x space?
-					var progressBar = progressBars[p];
-					var distanceX = playerPosition.x - progressBar.left - (progressBar.width * 0.5) + 10.0;
-
-					if( Math.abs(distanceX) <= (barThickness * 0.5) )
-					{
-
-						// The player is over this bar, but are they high enough to climb on top?
-						var barTop = progressBar.top - (progressBar.width * 0.5) - (playerHeight * 0.5);
-
-						// Can player reach the top?
-						playerDistanceFromGround = playerPosition.y - barTop;
-
-						// Prevent player from landing on/climbing up to new ground if distance is too high
-						var climbingThreshold = barTop + (playerHeight * 0.5);
-						if( playerPosition.y > climbingThreshold )
-						{
-							// console.log( playerPositionLastFrame.x, playerPosition.x );
-							playerPosition.x = playerPositionLastFrame.x;
-							playerVelocity.x = 0.0;
-
-							//Search for last bar then return
-							checkForBarCollision();
-							return false;
-
-						}
-						else// Player is safely over new bar
-						{
-							currentBar = progressBar;
-							return false;
-						}
-						
-					}
-
+					playerPosition.x = playerPositionLastFrame.x;
+					playerVelocity.x = 0.0;
+					return;
 				}
-				
+				else// Player is safely over new bar
+				{
+					currentBar = collisionBar;
+					return;
+				}
+
 			};
 
 			function shootWifi( direction )
@@ -916,7 +876,7 @@
 		<p class='title'>AwesomeCloud StrapQuest</p>
 		<p class='subtitle1'>Made with Twitter Bootstrap and Font Awesome</p>
 		<p class='subtitle2'>Press "A", "D", and "SPACE" to move and jump.</p>
-		<p class='subtitle2'>Press the arrow keys to shoot your wifi at the clouds and download files.</p>
+		<p class='subtitle2'>Press arrow keys to shoot your wifis at the clouds and download the internets.</p>
 
 		<i id='player' class='fa fa-female fa-2x'></i>
 
