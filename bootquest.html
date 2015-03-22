@@ -37,8 +37,24 @@
 
 			.title
 			{
-				position: absolute;
+				/*position: absolute;*/
 				font-size: 75px;
+				font-family: Montserrat;
+				color: white
+			}
+
+			.subtitle1
+			{
+				/*position: absolute;*/
+				font-size: 25px;
+				font-family: Montserrat;
+				color: white
+			}
+
+			.subtitle2
+			{
+				/*position: absolute;*/
+				font-size: 15px;
 				font-family: Montserrat;
 				color: white
 			}
@@ -92,8 +108,8 @@
 			// Wifis
 			var wifiReloadSpeed = 10;
 			var wifiReloadCounter = 0;
-			var wifiSpeed = 3.0;
-			var numWifis = 16;
+			var wifiSpeed = 6.0;
+			var numWifis = 8;
 			var wifis = [];
 
 			// Files
@@ -136,6 +152,9 @@
 				// Wifis
 				makeWifis();
 
+				// Files
+				makeFiles();
+
 				// player
 				player = $('#player');
 				playerPosition = new Point(parseFloat(player.css('left')), parseFloat(player.css('top')));
@@ -145,7 +164,6 @@
 					if( gameStarted == false )
 					{
 						gameStarted = true;
-						
 					}
 				});
 
@@ -205,7 +223,7 @@
 					}).appendTo(rootDiv);
 
 					// Rotate
-					rotate( rootDiv, 270 );
+					rootDiv.css( "transform", "rotate(270deg)" );
 
 					var progressNode = new gameNode();
 					progressNode.left = left;
@@ -243,6 +261,51 @@
 			};
 
 
+
+			function makeFiles()
+			{
+
+				for( var i = 0; i < numFiles; i++ )
+				{
+
+					var fileDiv = $('<i/>', {
+					    id: 'file_' + i,
+					    class: 'file fa fa-file',
+					    style: 'position:absolute;top:0px;left:0px;color:white;font-size:2em;visibility:hidden',
+					}).appendTo( $("body") );
+
+					var fileNode = new gameNode();
+					fileNode.fileDiv = fileDiv.get(0);
+					fileNode.active = false;
+					fileNode.currentBar = null;
+					fileNode.left = 0.0;
+					fileNode.top = 0.0;
+					fileNode.velocity = new Point(0.0, 0.0);
+					files.push( fileNode );
+
+				}
+
+			};
+
+
+			function getFreeFile()
+			{
+
+				for( var i = 0; i < numFiles; i++ )
+				{
+
+					if( files[i].active == false )
+					{
+						return files[i];
+					}
+
+				}
+
+				return null;
+
+			};
+
+
 			function getFreeWifi()
 			{
 
@@ -267,9 +330,6 @@
 				for( var i = 0; i < numClouds; i++ )
 				{
 
-					var top = Math.floor((Math.random() * (groundLevel - 500.0))) + 200.0;
-					var left = Math.floor(Math.random() * (rightLimit - 64.0));
-
 					var cloudDiv = $('<i/>', {
 					    id: 'cloud_' + i,
 					    class: 'cloud fa fa-cloud',
@@ -278,13 +338,61 @@
 
 					var cloudNode = new gameNode();
 					cloudNode.cloudDiv = cloudDiv.get(0);
-					cloudNode.top = top;
-					cloudNode.left = left;
+
+					// Randomize position at start of game
+					var top = Math.floor((Math.random() * (groundLevel - 500.0))) + 200.0;
+					var left = Math.floor(Math.random() * (rightLimit - 64.0));
+					cloudNode.cloudDiv.style.top = cloudNode.top = top;
+					cloudNode.cloudDiv.style.left = cloudNode.left = left;
+
+					// Give random velocity
+					setRandCloudVelocity( cloudNode );
+
+					// Reset jitter
 					cloudNode.jitterCounter = 0;
-					cloudNode.scale = 1.0;
+
+					// Scale
+					setRandCloudScale( cloudNode );
+
 					clouds.push( cloudNode );
 
 				}
+
+			};
+
+			function setRandCloudVelocity( cloud )
+			{
+				cloud.velocity = (Math.random() * 2.0) - 1.0;
+			};
+
+
+			function setRandCloudScale( cloud )
+			{
+				cloud.scale = Math.random() + 0.5;
+				cloud.cloudDiv.style.transform = "scale(" + cloud.scale + "," + cloud.scale + ")";
+			};
+
+
+			function resetCloud( cloud )
+			{
+
+				// Give random velocity
+				setRandCloudVelocity( cloud );	    		
+
+	    		// Reset jitter
+				cloud.jitterCounter = 0;
+
+				// Scale
+				setRandCloudScale( cloud );
+
+				// Reposition based on velocity
+				if( cloud.velocty > 0.0 )
+	    			cloud.left = -64.0;
+	    		else
+	    			cloud.left = rightLimit + 64.0;
+
+				cloud.cloudDiv.style.left = cloud.left;
+				cloud.cloudDiv.style.top = cloud.top;
 
 			};
 
@@ -399,15 +507,66 @@
 				player.css('top', playerPosition.y);
 
 
-				// Update toolTip
-				
+				// update files
+				for(var f = 0; f < numFiles; f++)
+				{
+
+					var file = files[f];
+
+					if( file.active == false )
+						continue;
+
+					file.velocity.y += gravity;
+
+					file.left += file.velocity.x;
+					file.top += file.velocity.y;
+
+					file.fileDiv.style.left = file.left;
+					file.fileDiv.style.top = file.top;
+
+					if( file.top > groundLevel )
+					{
+						file.active = false;
+						file.fileDiv.style.visibility = "hidden";
+					}
+
+					// File v bar collision
+					fileVsBarCollision( file );
+
+					if( file.currentBar != null )
+					{
+						var barTop = file.currentBar.top - (file.currentBar.width * 0.5) - (playerHeight * 0.5);
+						var fileDistanceFromGround = file.top - barTop;
+
+						if( file.top > barTop )// Snap file to top of bar
+						{
+							file.top = barTop;
+							file.velocity.y *= -0.5;
+							file.velocity.x *= friction;
+						}
+					}
+
+					// File v player collision
+					var distance = Math.sqrt(
+						Math.pow(((playerPosition.y + 10.0) - (file.top + 10.0)), 2) +
+						Math.pow(((playerPosition.x + 10.0) - (file.left + 10.0)), 2)
+					);
+					var threshold = 50.0;
+
+					if( distance < threshold )
+					{
+						file.active = false;
+						file.fileDiv.style.visibility = "hidden";
+					}
+
+				}
 
 
 				// update clouds
 				for(var c = 0; c < numClouds; c++)
 				{
 				    cloud = clouds[c];
-				    cloud.left -= 0.5;
+				    cloud.left += cloud.velocity;
 
 				    var randOffsetX = 0.0;
 				    var randOffsetY = 0.0;
@@ -424,16 +583,20 @@
 				    	// Reset cloud when small enough
 				    	if( cloud.scale <= 0.1 )
 				    	{
-				    		cloud.scale = 1.0;
-				    		cloud.left = rightLimit - 64.0;
+				    		resetCloud( cloud );
+
+				    		var randItem = Math.random()
+
+				    		continue;
 				    	}
 
 				    }
-
 				    
 				    // Wrap clouds
 				    if( cloud.left < -64.0 )
-				    	cloud.left = rightLimit - 64.0;
+				    	cloud.left = rightLimit + 64.0;
+				    if( cloud.left > rightLimit + 64.0 )
+				    	cloud.left = -64.0;
 
 				    cloud.cloudDiv.style.left = cloud.left + randOffsetX;
 				    cloud.cloudDiv.style.top = cloud.top + randOffsetY;
@@ -480,6 +643,23 @@
 								wifi.active = false;
 								wifi.wifiDiv.style.visibility = 'hidden';
 								cloud.jitterCounter = 10;
+
+								// Make random items
+								if( Math.random() < 0.5 )
+								{
+							    	var file = getFreeFile();
+							    	file.active = true;
+							    	file.fileDiv.style.visibility = 'visible';
+
+							    	file.velocity = new Point(
+							    		(Math.random() * 4.0) - 2.0,
+							    		(Math.random() * -8.0)
+							    	);
+
+							    	file.fileDiv.style.top = file.top = cloud.top - 10.0;
+							    	file.fileDiv.style.left = file.left = cloud.left + 10.0;
+						    	}
+
 								break;
 							}
 
@@ -488,6 +668,51 @@
 					}
 				}
 
+			};
+
+
+
+			function fileVsBarCollision( file )
+			{
+
+				// Player could be over a gap, or a new bar. Check.
+				for(var p = 0; p < numBars; p++)
+				{
+
+					// Is player in the same x space?
+					var progressBar = progressBars[p];
+					var distanceX = file.left - progressBar.left - (progressBar.width * 0.5) + 10.0;
+
+					if( Math.abs(distanceX) <= (barThickness * 0.5) )
+					{
+
+						// The player is over this bar, but are they high enough to climb on top?
+						var barTop = progressBar.top - (progressBar.width * 0.5) - (playerHeight * 0.5);
+
+						// Can player reach the top?
+						var fileDistanceFromGround = file.top - barTop;
+
+						// Prevent player from landing on/climbing up to new ground if distance is too high
+						var climbingThreshold = barTop + (playerHeight * 0.5);
+						if( file.top > climbingThreshold )
+						{
+							// console.log( playerPositionLastFrame.x, playerPosition.x );
+							file.left = file.left - file.velocity.x;
+							file.velocity.x = 0.0;
+
+							return false;
+
+						}
+						else// Player is safely over new bar
+						{
+							file.currentBar = progressBar;
+							return false;
+						}
+						
+					}
+
+				}
+				
 			};
 
 
@@ -557,26 +782,11 @@
 
 				// Rotate
 				if( direction == 1.0 )
-					rotate( $("#" + wifi.wifiDiv.id), 45 );
+					wifi.wifiDiv.style.transform = 'rotate(' + 45 + 'deg)';
 				else if( direction == -1.0 )
-					rotate( $("#" + wifi.wifiDiv.id), 315 );
+					wifi.wifiDiv.style.transform = 'rotate(' + 315 + 'deg)';
 				else if( direction == 0.0 )
-					rotate( $("#" + wifi.wifiDiv.id), 0 );
-			};
-
-			function rotate( _element, _angle )
-			{
-
-			    var rotate = 'rotate(' + _angle + 'deg)';
-
-			    _element.css({
-			        '-webkit-transform': rotate,
-			        '-moz-transform': rotate,
-			        '-o-transform': rotate,
-			        '-ms-transform': rotate,
-			        'transform': rotate
-			    })
-
+					wifi.wifiDiv.style.transform = 'rotate(' + 0+ 'deg)';
 			};
 
 
@@ -643,19 +853,12 @@
 
 	<body onkeydown='keyDown(event)' onkeyup='keyUp(event)'>
 
-		<p class='title'>AwesomeStrap CloudQuest</p>
+		<p class='title'>AwesomeCloud StrapQuest</p>
+		<p class='subtitle1'>Made with Twitter Bootstrap and Font Awesome</p>
+		<p class='subtitle2'>Press "A", "D", and "SPACE" to move and jump.</p>
+		<p class='subtitle2'>Press the arrow keys to shoot wifis at the clouds.</p>
 
 		<i id='player' class='fa fa-female fa-2x'></i>
-
-		<div id='toolTip' class='label label-info'>
-
-			A : Left
-			<br><br>
-			B : Right
-			<br><br>
-			SPACE : Jump
-			
-		</div>
 
 	</body>
 
