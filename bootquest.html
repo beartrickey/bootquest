@@ -66,13 +66,17 @@
 				left: -100px;
 			}
 
-			#toolTip{
-				position:absolute;
-				left: 50px;
-				top: 80%;
-				font-size: 20px;
-				z-index: 100;
+			#controls{
+				color: Grey;
 			}
+
+			.alert {
+			    font-size: 15px;
+				font-family: Montserrat;
+				color: Grey;
+				background-image: none;
+			}
+
 
 		</style>
 
@@ -145,7 +149,7 @@
 			};
 
 
-			function wrapComponent( _gameNode )
+			function wifiComponent( _gameNode )
 			{
 				// Used to wrap objects to the other side of the screen when they leave the left/right bounds
 
@@ -153,19 +157,13 @@
 
 				this.update = function()
 				{
-					if( this.gameNode.position.x < this.gameNode.width )
+					if( this.gameNode.position.x < 0.0 )
 					{
-						this.gameNode.position.x = progressBars[rightMostBarIndex].position.x - this.gameNode.width;
-
-						if( this.gameNode.position.y > progressBars[rightMostBarIndex].barTop )
-							this.gameNode.position.y = progressBars[rightMostBarIndex].barTop - this.gameNode.height;
+						this.gameNode.position.x = rightLimit + this.gameNode.position.x;
 					}
-					else if( this.gameNode.position.x > rightLimit - this.gameNode.width )
+					else if( this.gameNode.position.x > rightLimit)
 					{
-						this.gameNode.position.x = this.gameNode.width;
-
-						if( this.gameNode.position.y > progressBars[0].barTop )
-							this.gameNode.position.y = progressBars[0].barTop - this.gameNode.height;
+						this.gameNode.position.x = this.gameNode.position.x - rightLimit;
 					}
 				};
 
@@ -188,56 +186,47 @@
 					this.gameNode.position.x += this.gameNode.velocity.x;
 					this.gameNode.position.y += this.gameNode.velocity.y;
 
-					this.gameNode.div.style.left = this.gameNode.position.x;
-					this.gameNode.div.style.top = this.gameNode.position.y;
+					// Wrap
+					if( this.gameNode.position.x < 0.0 )
+					{
+						this.gameNode.position.x = rightLimit + this.gameNode.position.x;
+					}
+					else if( this.gameNode.position.x > rightLimit)
+					{
+						this.gameNode.position.x = this.gameNode.position.x - rightLimit;
+					}
 
 					// gameNode v bar collision
-					for(var p = 0; p < numBars; p++)
+					var collisionBarIndex = getBar( this.gameNode.position.x + (this.gameNode.width * 0.5) );
+					var collisionBar = progressBars[collisionBarIndex];
+
+					// The gameNode is over this bar, but are they high enough to climb on top?
+					var barTop = collisionBar.position.y - (collisionBar.width * 0.5) - (this.gameNode.height * 0.5);
+
+					// Prevent gameNode from landing on/climbing up to new ground if distance is too high
+					var climbingThreshold = barTop + (this.gameNode.height * 0.5);
+					if( this.gameNode.position.y > climbingThreshold )
 					{
-
-						// Is gameNode in the same x space?
-						var progressBar = progressBars[p];
-						var distanceX = this.gameNode.position.x - progressBar.position.x - (progressBar.width * 0.5) + 10.0;
-
-						if( Math.abs(distanceX) <= (barThickness * 0.5) )
-						{
-
-							// The gameNode is over this bar, but are they high enough to climb on top?
-							var barTop = progressBar.position.y - (progressBar.width * 0.5) - (this.gameNode.height * 0.5);
-
-							// Can gameNode reach the top?
-							this.distanceToGround = this.gameNode.position.y - barTop;
-
-							// Prevent player from landing on/climbing up to new ground if distance is too high
-							var climbingThreshold = barTop + (this.gameNode.height * 0.5);
-							if( this.gameNode.position.y > climbingThreshold )
-							{
-								// console.log( playerPositionLastFrame.x, playerPosition.x );
-								this.gameNode.position.x = this.gameNode.position.x - this.gameNode.velocity.x;
-								this.gameNode.velocity.x = 0.0;
-								break;
-
-							}
-							else// gameNode is safely over new bar
-							{
-								this.currentBar = progressBar;
-								break;
-							}
-						}
+						this.gameNode.velocity.x = 0.0;
+					}
+					else// gameNode is safely over new bar
+					{
+						this.currentBar = collisionBar;
 					}
 
-					if( this.currentBar != null )
-					{
-						var barTop = this.currentBar.position.y - (this.currentBar.width * 0.5) - (this.gameNode.height * 0.5);
-						this.distanceToGround = this.gameNode.position.y - barTop;
+					var barTop = this.currentBar.position.y - (this.currentBar.width * 0.5) - (this.gameNode.height * 0.5);
+					this.distanceToGround = this.gameNode.position.y - barTop;
 
-						if( this.gameNode.position.y > barTop )// Snap gameNode to top of bar
-						{
-							this.gameNode.position.y = barTop;
-							this.gameNode.velocity.y *= -0.5;
-							this.gameNode.velocity.x *= friction;
-						}
+					if( this.gameNode.position.y > barTop )// Snap gameNode to top of bar
+					{
+						this.gameNode.position.y = barTop;
+						this.gameNode.velocity.y *= -0.5;
+						this.gameNode.velocity.x *= friction;
 					}
+
+					this.gameNode.div.style.left = this.gameNode.position.x;
+					this.gameNode.div.style.top = this.gameNode.position.y;
+					
 				};
 
 			};
@@ -261,8 +250,16 @@
 				});
 
 				// ====================================================
+				// Tooltip
+				// ====================================================
+				$('[data-toggle="tooltip"]').tooltip()
+
+				// ====================================================
 				// Game objects
 				// ====================================================
+
+				// Progress bars
+				makeProgressBars();
 
 				// Clouds
 				placeClouds();
@@ -272,9 +269,6 @@
 
 				// Files
 				makeFiles();
-
-				// Progress bars
-				makeProgressBars();
 
 				// player
 				player = $('#player');
@@ -405,7 +399,6 @@
 					files.push( fileNode );
 
 					fileNode.componentList.push(new physicsComponent(fileNode));
-					fileNode.componentList.push(new wrapComponent(fileNode));
 
 				}
 
@@ -679,15 +672,23 @@
 						var wifi = wifis[w];
 						wifi.left += wifi.velocity.x;
 						wifi.top += wifi.velocity.y;
+
+						// Wrap
+						if( wifi.left < 0.0 )
+						{
+							wifi.left = rightLimit + wifi.left;
+						}
+						else if( wifi.left > rightLimit)
+						{
+							wifi.left = wifi.left - rightLimit;
+						}
+
+
 						wifi.wifiDiv.style.left = wifi.left;
 						wifi.wifiDiv.style.top = wifi.top;
 
-						// Deactivate if outside screen
-						if(
-							wifi.left > rightLimit - 64.0 ||
-							wifi.left < -64.0 ||
-							wifi.top < 0.0 
-						)
+						// Deactivate if above screen
+						if( wifi.top < 0.0 )
 						{
 							wifi.active = false;
 							wifi.wifiDiv.style.visibility = 'hidden';
@@ -873,10 +874,35 @@
 
 	<body onkeydown='keyDown(event)' onkeyup='keyUp(event)'>
 
-		<p class='title'>AwesomeCloud StrapQuest</p>
-		<p class='subtitle1'>Made with Twitter Bootstrap and Font Awesome</p>
-		<p class='subtitle2'>Press "A", "D", and "SPACE" to move and jump.</p>
-		<p class='subtitle2'>Press arrow keys to shoot your wifis at the clouds and download the internets.</p>
+		<div class="container pull-left">
+			<div class="row">
+				<div class="col-md-12">
+					<p class='title'>AwesomeStrap CloudQuest</p>
+					<p class='subtitle1'>
+						Made with
+						<a href="http://fortawesome.github.io/Font-Awesome/">Font Awesome</a>
+						 and
+						<a href="http://getbootstrap.com/">Twitter Bootstrap</a>
+					</p>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-md-5">
+					<div class="alert alert-info alert-dismissible" id="control-well" role="alert">
+						<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true" style="color:black">&times;</span></button>
+						<i id='controls' class='fa fa-crosshairs fa-2x'></i>
+						<br>- Press any key to begin.
+						<br>- Shoot your wifis at the clouds to download the Internets.
+					</div>
+					<div class="alert alert-info alert-dismissible" id="control-well" role="alert">
+						<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true" style="color:black">&times;</span></button>
+						<i id='controls' class='fa fa-keyboard-o fa-2x'></i>
+						<br>- Press A, D, and SPACE to move and jump.
+						<br>- Press arrow keys to shoot your wifis.
+					</div>
+				</div>
+			</div>
+		</div>
 
 		<i id='player' class='fa fa-female fa-2x'></i>
 
