@@ -97,7 +97,7 @@
 			
 			// Terrain progress bars
 			var numBars = 256;
-			var numActiveBars = 0;
+			var rightMostBarIndex = 0;
 			var barThickness = 20;
 			var progressBars = [];
 			
@@ -128,6 +128,7 @@
 				this.height = 0.0;
 				this.div = null;
 				this.jqueryElement = null;
+				this.justWrapped = false;
 
 				this.componentList = [];
 
@@ -144,7 +145,7 @@
 			};
 
 
-			function physicsWrapComponent( _gameNode )
+			function wrapComponent( _gameNode )
 			{
 				// Used to wrap objects to the other side of the screen when they leave the left/right bounds
 
@@ -152,13 +153,17 @@
 
 				this.update = function()
 				{
-					if( this.gameNode.position.x < 0.0 )
+					this.gameNode.justWrapped = false;
+					if( this.gameNode.position.x < 0.5 )
 					{
-						this.gameNode.position.x = rightLimit;
+						this.gameNode.position.x = progressBars[rightMostBarIndex].left;
+
+						if( this.gameNode.position.y > progressBars[rightMostBarIndex].barTop )
+							this.gameNode.position.y = progressBars[rightMostBarIndex].barTop - this.gameNode.height;
 					}
-					else if( this.gameNode.position.x > rightLimit - this.gameNode.width )
+					else if( this.gameNode.position.x > rightLimit - this.gameNode.width - 0.5 )
 					{
-						this.gameNode.position.x = 0.0;
+						this.gameNode.position.x = 0.5;
 
 						if( this.gameNode.position.y > progressBars[0].barTop )
 							this.gameNode.position.y = progressBars[0].barTop - this.gameNode.height;
@@ -253,6 +258,7 @@
 
 				$(window).resize(function(){
 					onResize();
+					getRightmostBar();
 				});
 
 				// ====================================================
@@ -287,6 +293,12 @@
 			{
 				rightLimit = $( window ).width();
 				groundLevel = $( window ).height();
+			}
+
+
+			function getRightmostBar()
+			{
+				rightMostBarIndex = Math.ceil(rightLimit / barThickness);
 			}
 
 
@@ -334,12 +346,15 @@
 					rootDiv.css( "transform", "rotate(270deg)" );
 
 					var progressNode = new gameNode();
+					progressNode.div = rootDiv;
 					progressNode.left = left;
 					progressNode.top = top;
 					progressNode.width = thisBarLength;
 					progressBars.push( progressNode );
 
 				}
+
+				getRightmostBar();
 
 			};
 
@@ -392,7 +407,7 @@
 					files.push( fileNode );
 
 					fileNode.componentList.push(new physicsComponent(fileNode));
-					fileNode.componentList.push(new physicsWrapComponent(fileNode));
+					fileNode.componentList.push(new wrapComponent(fileNode));
 
 				}
 
