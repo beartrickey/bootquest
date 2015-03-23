@@ -1,12 +1,14 @@
 
-
+<!DOCTYPE HTML>
 <html>
 
 	<head>
 
 		<title>
-			AwesomeStrapCloudQuest
+			AwesomeStrap CloudQuest
 		</title>
+
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 
 		<!-- fonts -->
 		<link href='http://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet' type='text/css'>
@@ -79,6 +81,8 @@
 
 		<script type="text/javascript">
 
+			console.log("Started");
+
 			var gameStarted = false;
 
 			// Player vars
@@ -122,8 +126,8 @@
 			{
 
 				this.active = false;
-				this.position = Point(0,0);
-				this.velocity = Point(0,0);
+				this.position = new Point(0,0);
+				this.velocity = new Point(0,0);
 				this.scale = 1.0;
 				this.width = 0.0;
 				this.height = 0.0;
@@ -221,8 +225,8 @@
 						this.gameNode.velocity.x *= friction;
 					}
 
-					this.gameNode.div.style.left = this.gameNode.position.x;
-					this.gameNode.div.style.top = this.gameNode.position.y;
+					this.gameNode.div.style.left = this.gameNode.position.x + "px";
+					this.gameNode.div.style.top = this.gameNode.position.y + "px";
 					
 				};
 
@@ -363,8 +367,7 @@
 					var wifiNode = new gameNode();
 					wifiNode.wifiDiv = wifiDiv.get(0);
 					wifiNode.active = false;
-					wifiNode.left = 0.0;
-					wifiNode.top = 0.0;
+					wifiNode.position = new Point(0.0, 0.0);
 					wifiNode.velocity = new Point(0.0, 0.0);
 					wifis.push( wifiNode );
 
@@ -443,21 +446,22 @@
 
 				for( var i = 0; i < numClouds; i++ )
 				{
+					// Randomize position at start of game
+					var top = Math.floor((Math.random() * (groundLevel - 500.0))) + 200.0;
+					var left = Math.floor(Math.random() * (rightLimit - 64.0));
 
 					var cloudDiv = $('<i/>', {
 					    id: 'cloud_' + i,
 					    class: 'cloud fa fa-cloud',
-					    style: 'position:absolute;top:' + top + 'px;left:' + left + 'px;color:white;font-size:7em;',
+					    style: 'position:absolute;top:0px;left:0px;color:white;font-size:7em;',
 					}).appendTo( $("body") );
 
 					var cloudNode = new gameNode();
 					cloudNode.cloudDiv = cloudDiv.get(0);
 
-					// Randomize position at start of game
-					var top = Math.floor((Math.random() * (groundLevel - 500.0))) + 200.0;
-					var left = Math.floor(Math.random() * (rightLimit - 64.0));
-					cloudNode.cloudDiv.style.top = cloudNode.top = top;
-					cloudNode.cloudDiv.style.left = cloudNode.left = left;
+					cloudNode.cloudDiv.style.top = top + "px";
+					cloudNode.cloudDiv.style.left = left + "px";
+					cloudNode.position = new Point(left, top);
 
 					// Give random velocity
 					setRandCloudVelocity( cloudNode );
@@ -501,12 +505,12 @@
 
 				// Reposition based on velocity
 				if( cloud.velocty > 0.0 )
-	    			cloud.left = -64.0;
+	    			cloud.position.x = -64.0;
 	    		else
-	    			cloud.left = rightLimit + 64.0;
+	    			cloud.position.x = rightLimit + 64.0;
 
-				cloud.cloudDiv.style.left = cloud.left;
-				cloud.cloudDiv.style.top = cloud.top;
+				cloud.cloudDiv.style.left = cloud.position.x + "px";
+				cloud.cloudDiv.style.top = cloud.position.y + "px";
 
 			};
 
@@ -623,7 +627,7 @@
 				for(var c = 0; c < numClouds; c++)
 				{
 				    cloud = clouds[c];
-				    cloud.left += cloud.velocity;
+				    cloud.position.x += cloud.velocity;
 
 				    var randOffsetX = 0.0;
 				    var randOffsetY = 0.0;
@@ -650,13 +654,16 @@
 				    }
 				    
 				    // Wrap clouds
-				    if( cloud.left < -64.0 )
-				    	cloud.left = rightLimit + 64.0;
-				    if( cloud.left > rightLimit + 64.0 )
-				    	cloud.left = -64.0;
+				    if( cloud.position.x < -64.0 )
+				    	cloud.position.x = rightLimit + 64.0;
+				    if( cloud.position.x > rightLimit + 64.0 )
+				    	cloud.position.x = -64.0;
 
-				    cloud.cloudDiv.style.left = cloud.left + randOffsetX;
-				    cloud.cloudDiv.style.top = cloud.top + randOffsetY;
+				    var tempPositionX = cloud.position.x + randOffsetX;
+					var tempPositionY = cloud.position.y + randOffsetY;
+
+				    cloud.cloudDiv.style.left = tempPositionX + "px";
+				    cloud.cloudDiv.style.top = tempPositionY + "px";
 				}
 
 
@@ -667,25 +674,25 @@
 					if( wifis[w].active == true )
 					{
 						var wifi = wifis[w];
-						wifi.left += wifi.velocity.x;
-						wifi.top += wifi.velocity.y;
+						wifi.position.x += wifi.velocity.x;
+						wifi.position.y += wifi.velocity.y;
 
 						// Wrap
-						if( wifi.left < 0.0 )
+						if( wifi.position.x < 0.0 )
 						{
-							wifi.left = rightLimit + wifi.left;
+							wifi.position.x = rightLimit + wifi.position.x;
 						}
-						else if( wifi.left > rightLimit)
+						else if( wifi.position.x > rightLimit)
 						{
-							wifi.left = wifi.left - rightLimit;
+							wifi.position.x = wifi.position.x - rightLimit;
 						}
 
 
-						wifi.wifiDiv.style.left = wifi.left;
-						wifi.wifiDiv.style.top = wifi.top;
+						wifi.wifiDiv.style.left = wifi.position.x + "px";
+						wifi.wifiDiv.style.top = wifi.position.y + "px";
 
 						// Deactivate if above screen
-						if( wifi.top < 0.0 )
+						if( wifi.position.y < 0.0 )
 						{
 							wifi.active = false;
 							wifi.wifiDiv.style.visibility = 'hidden';
@@ -698,8 +705,8 @@
 							var halfCloudSize = 50.0;
 							var halfWifiSize = 10.0;
 							var distance = Math.sqrt(
-								Math.pow(((wifi.top + halfWifiSize) - (cloud.top + halfCloudSize)), 2) +
-								Math.pow(((wifi.left + halfWifiSize) - (cloud.left + halfCloudSize)), 2)
+								Math.pow(((wifi.position.y + halfWifiSize) - (cloud.position.y + halfCloudSize)), 2) +
+								Math.pow(((wifi.position.x + halfWifiSize) - (cloud.position.x + halfCloudSize)), 2)
 							);
 							var threshold = 50.0;
 
@@ -726,8 +733,11 @@
 							    		(Math.random() * -8.0)
 							    	);
 
-							    	file.div.style.top = file.position.y = cloud.top - 10.0;
-							    	file.div.style.left = file.position.x = cloud.left + 10.0;
+							    	file.position.y = cloud.position.y - 10.0;
+ 									file.position.x = cloud.position.x + 10.0;
+
+							    	file.div.style.top = file.position.y + "px";
+							    	file.div.style.left = file.position.x + "px";
 						    	}
 
 								break;
@@ -793,8 +803,8 @@
 				wifi.active = true;
 				wifi.wifiDiv.style.visibility = 'visible';
 				wifi.velocity = new Point( direction * wifiSpeed, -wifiSpeed );
-				wifi.left = playerPosition.x - 5.0;
-				wifi.top = playerPosition.y;
+				wifi.position.x = playerPosition.x - 5.0;
+				wifi.position.y = playerPosition.y;
 
 				// Rotate
 				if( direction == 1.0 )
